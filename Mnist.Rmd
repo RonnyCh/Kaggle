@@ -1,0 +1,168 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Sources : 
+1. https://rpubs.com/dhnanjay/236153
+2. https://rafalab.github.io/dsbook/machine-learning-in-practice.html
+
+
+Set the working directory to where I save the csv file.
+
+```{r}
+ setwd("H:/SharedLaptop/DS/MNIST")
+```
+
+
+```{r}
+train <- read.csv('train.csv')
+nrow(train)
+```
+
+```{r}
+library(caret)
+nzv <- nearZeroVar(train)
+length(nzv)
+```
+
+
+```{r}
+col_index <- setdiff(2:785,nzv)
+length(col_index)
+
+y <- factor(unlist(train[,1]))
+```
+
+```{r}
+n <- 42000
+b <- 2
+index <- sample(nrow(train), n)
+control <- trainControl(method = "cv", number = b, p = .9)
+
+start_time <- Sys.time()
+train_knn <- train(train[index, col_index], y[index], 
+                   method = "knn", 
+                   tuneGrid = data.frame(k = c(3,5,7)),
+                   trControl = control)
+
+end_time <- Sys.time()
+
+end_time - start_time
+
+train_knn
+```
+
+
+
+# train based on small dataset
+```{r}
+set.seed(1990)
+index <- sample(nrow(digit), 2000)
+train <- digit[index,]
+dim(train)
+
+
+```
+
+```{r}
+library(ggplot2)
+library(matrixStats)
+myx <- unlist(train[-1])
+myy <- factor(unlist(train[1]))
+myx <- matrix(myx,2000,784)
+sds <- colSds(myx)
+qplot(sds,bins=256)
+```
+
+
+```{r}
+library(caret)
+nzv <- nearZeroVar(myx)
+#image(matrix(1:784 %in% nzv, 28, 28))
+```
+
+```{r}
+col_index <- setdiff(1:ncol(myx), nzv)
+length(col_index)
+```
+
+# need to know this... KNN needs column names hence below code.
+```{r}
+colnames(myx) <- 2:ncol(train)
+```
+
+
+# KNN
+```{r}
+control <- trainControl(method = "cv", number = 10, p = .9)
+train_knn <- train(myx[,col_index], myy, 
+                   method = "knn", 
+                   tuneGrid = data.frame(k = c(3,5,7)),
+                   trControl = control)
+train_knn
+```
+
+```{r}
+fit_knn <- knn3(myx[, col_index], myy,  k = 3)
+```
+
+
+# test
+```{r}
+set.seed(1990)
+index <- sample(nrow(train), 15)
+validate <- train[index,]
+dim(validate)
+
+
+test_images <- unlist(validate[-1])
+test_images <- matrix(test_images,15,784)
+colnames(test_images) <- 2:ncol(validate)
+test_label <- factor(unlist(validate[1]), levels = c(0,1,2,3,4,5,6,7,8,9))
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+test <- read.csv('test.csv')
+dim(test)
+```
+
+## yhuuu.... created my own image review
+
+```{r}
+par(mfrow=c(3,5))
+for (i in 1:15) {
+b <- matrix(unlist(test[i,]),28,28)
+image(1:28,1:28,b[,28:1], col = grey.colors(255))
+}
+
+
+```
+
+
+# let's see if the model will predict the above correctly
+# create dummy test record
+
+```{r}
+dummy <- test[1:15, col_index - 1]  # -1 because of skipping
+test_label <- factor(test[1:15,1], levels=c(0,1,2,3,4,5,6,7,8,9))
+dim(test)
+```
+
+
+#predict
+```{r}
+y_hat_knn <- predict(train_knn, dummy, type="raw")
+#cm <- confusionMatrix(y_hat_knn,test_label)
+#cm$overall["Accuracy"]
+matrix(y_hat_knn,3,5)
+```
